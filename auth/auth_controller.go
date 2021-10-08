@@ -31,3 +31,4 @@ func (controller AuthController) Profile(c echo.Context) error {
 	return c.String(http.StatusOK, "Profile")
 }
 
+
