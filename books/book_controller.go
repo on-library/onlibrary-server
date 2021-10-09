@@ -78,6 +78,7 @@ func (controller BookController) GetBooks(c echo.Context) error {
 	db := database.GetInstance()
 	var books []models.Book
 
+	// TODO: Add filter using query params (title, author, publisher, category)
 	db.Find(&books)
 
 	var r = struct {
