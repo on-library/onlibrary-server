@@ -2,10 +2,14 @@ package main
 
 import (
 	"log"
-	"onlibrary/books/models"
+	authModel "onlibrary/auth/models"
+	bookModel "onlibrary/books/models"
+	"onlibrary/common"
 	"onlibrary/database"
+	reviewModel "onlibrary/reviews/models"
 	"onlibrary/routes"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -19,11 +23,14 @@ func main(){
 	}
 
 	api := echo.New()
+	api.Validator = &common.CustomValidator{Validator: validator.New()}
 
 	api.Use(middleware.CORS())
 
 	db := database.GetInstance()
-	db.AutoMigrate(&models.Book{})
+	db.AutoMigrate(&bookModel.Book{})
+	db.AutoMigrate(&reviewModel.Review{})
+	db.AutoMigrate(&authModel.Auth{})
 
 	routes.DefineApiRoute(api)
 

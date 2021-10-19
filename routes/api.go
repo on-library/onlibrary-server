@@ -4,6 +4,7 @@ import (
 	"onlibrary/auth"
 	"onlibrary/books"
 	"onlibrary/common"
+	"onlibrary/reviews"
 
 	"github.com/labstack/echo/v4"
 )
@@ -12,6 +13,7 @@ func DefineApiRoute(e *echo.Echo){
 	controllers := []common.Controller{
 		auth.AuthController{},
 		books.BookController{},
+		reviews.ReviewController{},
 	}
 	var routes []common.Route
 	for _, controller := range controllers {

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"onlibrary/reviews/models"
 	"time"
 
 	uuid "github.com/satori/go.uuid"
@@ -15,6 +16,7 @@ type Book struct {
 	Category		string		`json:"category"`
 	Publisher		string		`json:"publisher"`
 	Stock			uint		`json:"stock"`
+	Reviews			[]models.Review	 `gorm:"foreignKey:BookRefer" json:"reviews"`
 	CreatedAt		time.Time	`json:"created_at"`
 	UpdatedAt 		time.Time	`json:"updated_at"`
 }
