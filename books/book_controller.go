@@ -32,9 +32,7 @@ type(
 		AddBookRequest
 	}
 
-	GeneralResponseJSON struct {
-		Message 	string		`json:"message"`
-	}
+	
 
 )
 
@@ -79,10 +77,10 @@ func (controller BookController) GetBooks(c echo.Context) error {
 	var books []models.Book
 
 	// TODO: Add filter using query params (title, author, publisher, category)
-	db.Find(&books)
+	db.Preload("Reviews").Find(&books)
 
 	var r = struct {
-		GeneralResponseJSON
+		common.GeneralResponseJSON
 		Data []models.Book		`json:"data"`
 	}{}
 
@@ -97,16 +95,16 @@ func (controller BookController) GetBook(c echo.Context) error {
 	bookId := c.Param("bookId")
 	db := database.GetInstance()
 	var book models.Book
-	err := db.First(&book, "id = ?",bookId).Error
+	err := db.Preload("Reviews").First(&book, "id = ?",bookId).Error
 	if err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "Book not found")
 	}
 
 	var r = struct {
-		GeneralResponseJSON
+		common.GeneralResponseJSON
 		Data models.Book `json:"data"`
 	}{
-		GeneralResponseJSON:GeneralResponseJSON{"Success"},
+		GeneralResponseJSON:common.GeneralResponseJSON{Message: "Success"},
 		Data: book,
 	}
 	return c.JSON(http.StatusOK, r)
@@ -135,10 +133,10 @@ func (controller BookController) AddBook(c echo.Context) error {
 	db.Create(&newBook)
 
 	var r = struct {
-		GeneralResponseJSON
+		common.GeneralResponseJSON
 		Data models.Book `json:"data"`
 	}{
-		GeneralResponseJSON:GeneralResponseJSON{"Success"},
+	GeneralResponseJSON:common.GeneralResponseJSON{Message: "Success"},
 		Data: newBook,
 	}
 	return c.JSON(http.StatusOK, r)
@@ -180,10 +178,10 @@ func (controller BookController) DeleteBook(c echo.Context) error {
 	db.Where("id = ?", params).Delete(&book)
 
 	var r = struct {
-		GeneralResponseJSON
+		common.GeneralResponseJSON
 		Id string
 	}{
-		GeneralResponseJSON:GeneralResponseJSON{"Success"},
+		GeneralResponseJSON:common.GeneralResponseJSON{Message: "Success"},
 		Id: params,
 	}
 	return c.JSON(http.StatusOK, r)
