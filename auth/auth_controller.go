@@ -1,11 +1,14 @@
 package auth
 
 import (
+	"fmt"
 	"net/http"
 	"onlibrary/auth/models"
 	"onlibrary/common"
 	"onlibrary/database"
+	"time"
 
+	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	uuid "github.com/satori/go.uuid"
 )
@@ -27,6 +30,12 @@ type(
 		Address		string		`json:"address" validate:"required"`
 		City		string		`json:"city" validate:"required"`
 		Province	string		`json:"province" validate:"required"`		
+	}
+
+	jwtCustomClaims struct {
+		Name		string		`json:"name"`
+		Role		int		`json:"role"`
+		jwt.StandardClaims
 	}
 )
 
@@ -57,14 +66,51 @@ func (controller AuthController) Profile(c echo.Context) error {
 }
 
 func (controller AuthController) Login(c echo.Context) error {
+	db := database.GetInstance()
 	params := new(LoginRequest)
 
 	if err := c.Bind(params); err != nil {
 		return c.JSON(http.StatusBadRequest,err)
 	}
 
+	var user models.Auth
+
+	var r = struct {
+		common.GeneralResponseJSON
+	}{
+		GeneralResponseJSON: common.GeneralResponseJSON{Message:"Username/password invalid"},
+	}
+
+	if db.First(&user, "username = ?", params.Username);user.Username != params.Username{
+		return c.JSON(http.StatusBadRequest, r)
+	}
+
+	if !CheckPasswordHash(params.Password, user.Password){
+		return c.JSON(http.StatusBadRequest, r)
+	}
+
+
+
+	claims := &jwtCustomClaims{
+		user.Name,
+		user.Role,
+		jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(time.Hour * 72).Unix(),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	t, err := token.SignedString([]byte("SECRETKEY"))
+	fmt.Print(t)
+	if err != nil {
+		fmt.Print(err)
+		return err
+	}
 	
-	return c.JSON(http.StatusOK, params)
+	return c.JSON(http.StatusOK, echo.Map{
+		"status":"success",
+		"token":t,
+	})
 }
 
 func (controller AuthController) Register(c echo.Context) error {
@@ -104,7 +150,7 @@ func (controller AuthController) Register(c echo.Context) error {
 	newUser.ID = newID
 	newUser.Username = params.Username
 	newUser.Password = hashedPassword
-	newUser.Role = "1"
+	newUser.Role = 1
 	newUser.Email = params.Email
 	newUser.City = params.City
 	newUser.Province = params.Province
