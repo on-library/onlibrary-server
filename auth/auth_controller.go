@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
 	"onlibrary/auth/models"
 	"onlibrary/common"
@@ -32,11 +33,12 @@ type(
 		Province	string		`json:"province" validate:"required"`		
 	}
 
-	jwtCustomClaims struct {
-		Name		string		`json:"name"`
-		Role		int		`json:"role"`
-		jwt.StandardClaims
+	VerifyRequest struct {
+		Username	string		`json:"username" validate:"required"`
+		Code		int		`json:"code" validate:"required"`
 	}
+
+
 )
 
 func (controller AuthController) Routes() []common.Route {
@@ -45,6 +47,7 @@ func (controller AuthController) Routes() []common.Route {
 			Method: echo.GET,
 			Path: "/auth/profile",
 			Handler: controller.Profile,
+			Middleware: []echo.MiddlewareFunc{common.JwtMiddleware()},
 		},
 		{
 			Method:echo.POST,
@@ -56,13 +59,74 @@ func (controller AuthController) Routes() []common.Route {
 			Path: "/auth/register",
 			Handler: controller.Register,
 		},
+		{
+			Method: echo.POST,
+			Path: "/auth/verify",
+			Handler: controller.VerifyAccount,
+		},
+		
 	}
 }
 
 
 
 func (controller AuthController) Profile(c echo.Context) error {
-	return c.String(http.StatusOK, "Profile")
+	db:= database.GetInstance()
+
+	user := c.Get("user").(*jwt.Token)
+	claims := user.Claims.(*common.JwtCustomClaims)
+
+
+	var userInfo models.Auth
+
+	db.First(&userInfo,"username = ?",claims.Username)
+	
+	
+	
+
+	return c.JSON(http.StatusOK, echo.Map{
+		"user":userInfo,
+		
+	})
+}
+
+func (controller AuthController) VerifyAccount (c echo.Context) error {
+	db := database.GetInstance()
+	params := new(VerifyRequest)
+
+	if err:= c.Bind(params); err != nil {
+		return c.JSON(http.StatusBadRequest, err)
+	}
+
+	if err:= c.Validate(params); err != nil {
+		var r = struct {
+			common.GeneralResponseJSON
+			Errors error		`json:"errors"`
+		}{
+			GeneralResponseJSON: common.GeneralResponseJSON{Message: "Error"},
+			Errors: err,
+		}
+		return echo.NewHTTPError(http.StatusBadRequest, r)
+	}
+
+	var user models.Auth
+
+	var r = struct {
+		common.GeneralResponseJSON
+	}{
+		GeneralResponseJSON: common.GeneralResponseJSON{Message:"Invalid code"},
+	}
+
+	if db.First(&user, "username = ?", params.Username); user.VerifyCode != params.Code {
+		return c.JSON(http.StatusBadRequest,r)
+	}
+
+	
+
+	return c.JSON(http.StatusOK,echo.Map{
+		"status":"success",
+		"message":"Account verified!",
+	})
 }
 
 func (controller AuthController) Login(c echo.Context) error {
@@ -89,12 +153,18 @@ func (controller AuthController) Login(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, r)
 	}
 
+	if user.IsVerify == 0 {
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"status":"failed",
+			"message":"Account is not valid. Please check your email for activation",
+		})
+	}
 
-
-	claims := &jwtCustomClaims{
-		user.Name,
-		user.Role,
-		jwt.StandardClaims{
+	claims := &common.JwtCustomClaims{
+		ID: user.ID,
+		Username: user.Username,
+		Role: user.Role,
+		StandardClaims:jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 72).Unix(),
 		},
 	}
@@ -155,6 +225,10 @@ func (controller AuthController) Register(c echo.Context) error {
 	newUser.City = params.City
 	newUser.Province = params.Province
 	newUser.Address = params.Address
+	newUser.IsVerify = 0
+	newUser.VerifyCode =rand.Intn(9999)
+
+	fmt.Println(rand.Intn(9999))
 
 	db.Create(&newUser)
 

@@ -6,6 +6,7 @@ import (
 	bookModel "onlibrary/books/models"
 	"onlibrary/common"
 	"onlibrary/database"
+	rentModel "onlibrary/rents/models"
 	reviewModel "onlibrary/reviews/models"
 	"onlibrary/routes"
 
@@ -31,6 +32,7 @@ func main(){
 	db.AutoMigrate(&bookModel.Book{})
 	db.AutoMigrate(&reviewModel.Review{})
 	db.AutoMigrate(&authModel.Auth{})
+	db.AutoMigrate(&rentModel.Rent{})
 
 	routes.DefineApiRoute(api)
 
