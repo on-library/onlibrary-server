@@ -1,6 +1,7 @@
 package reviews
 
 import (
+	"fmt"
 	"net/http"
 	bookModel "onlibrary/books/models"
 	"onlibrary/common"
@@ -50,19 +51,20 @@ func (controller ReviewController) AddReview(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, err)
 	}
 
+
 	var book bookModel.Book
 
 	newId := uuid.NewV1()
 
 	var review = reviewModel.Review{ID: newId,Comment: params.Comment,Rating: params.Rating,BookRefer: params.BookId}
 
-	if err:= db.First(&book, "id = ?", params.BookId); err != nil {
+	if err:= db.First(&book, "id = ?", params.BookId); err.Error != nil {
 		var r = struct {
 			common.GeneralResponseJSON
 		}{
-			GeneralResponseJSON: common.GeneralResponseJSON{Message: "Book not found"},
+			GeneralResponseJSON: common.GeneralResponseJSON{Message: "Booxxk not found"},
 		}
-	
+		fmt.Println(err.Error)
 		return c.JSON(http.StatusBadRequest, r)
 	}
 
