@@ -1,8 +1,10 @@
 package books
 
 import (
+	"fmt"
 	"net/http"
 	"onlibrary/books/models"
+	modelCategory "onlibrary/category/models"
 	"onlibrary/common"
 	"onlibrary/database"
 	"time"
@@ -16,13 +18,16 @@ type(
 
 	}
 
+	
 	AddBookRequest struct {
-		Title			string		`json:"title"`
-		Description		string		`json:"description"`
-		Author			string		`json:"author"`
-		Category		string		`json:"category"`
-		Publisher		string		`json:"publisher"`
-		Stock			uint		`json:"stock"`
+		JudulBuku			string		`json:"judul_buku"`
+		DeskripsiBuku		string		`json:"deskripsi_buku"`
+		Penulis			string		`json:"penulis"`
+		CategoryID		uuid.UUID		`json:"category_id"`
+		Penerbit		string		`json:"penerbit"`
+		TahunTerbit		time.Time	`json:"tahun_terbit"`
+		Genres			[]string	`json:"genres"`	
+		Stok			int		`json:"stok"`
 		CreatedAt		time.Time	`json:"created_at"`
 		UpdatedAt 		time.Time	`json:"updated_at"`
 	}
@@ -118,19 +123,34 @@ func (controller BookController) AddBook(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, err)
 	}
 
+	var category modelCategory.Category 
+
 	var newBook models.Book
 
 	id := uuid.NewV1()
 
 
 	newBook.ID = id;
-	newBook.Title = params.Title
-	newBook.Description = params.Description
+	newBook.JudulBuku = params.JudulBuku
+	newBook.TahunTerbit = params.TahunTerbit
+	newBook.DeskripsiBuku = params.DeskripsiBuku
+	newBook.BookCategoryID = params.CategoryID
+
+	fmt.Println(params.Genres)
 
 	db := database.GetInstance()
-	
 
-	db.Create(&newBook)
+	if err:= db.First(&category, "category_id = ?", params.CategoryID); err.Error != nil {
+		var r = struct {
+			common.GeneralResponseJSON
+		}{
+			GeneralResponseJSON: common.GeneralResponseJSON{Message: "Category not found"},
+		}
+		fmt.Println(err.Error)
+		return c.JSON(http.StatusBadRequest, r)
+	}
+	
+	db.Model(&category).Association("Books").Append(&newBook)
 
 	var r = struct {
 		common.GeneralResponseJSON
@@ -157,12 +177,13 @@ func (controller BookController) EditBook(c echo.Context) error {
 	db.First(&book, "id = ?", params.ID)
 
 	
-	book.Title = params.Title
-	book.Description = params.Description
-	book.Author = params.Author
-	// book.Category = params.Category
-	book.Description = params.Description
-	book.Stock = params.Stock
+	
+	book.JudulBuku = params.JudulBuku
+	book.DeskripsiBuku = params.DeskripsiBuku
+	book.Penulis = params.Penulis
+	book.BookCategoryID = params.CategoryID
+	book.DeskripsiBuku = params.DeskripsiBuku
+	book.Stok = params.Stok
 
 	db.Save(&book)
 

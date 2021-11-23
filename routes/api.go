@@ -3,7 +3,9 @@ package routes
 import (
 	"onlibrary/auth"
 	"onlibrary/books"
+	"onlibrary/category"
 	"onlibrary/common"
+	"onlibrary/genre"
 	"onlibrary/rents"
 	"onlibrary/reviews"
 
@@ -16,6 +18,8 @@ func DefineApiRoute(e *echo.Echo){
 		books.BookController{},
 		reviews.ReviewController{},
 		rents.RentController{},
+		genre.GenreController{},
+		category.CategoryController{},
 	}
 	var routes []common.Route
 	for _, controller := range controllers {
