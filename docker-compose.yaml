@@ -1,0 +1,28 @@
+version: "3.3"
+
+services:
+  app:
+    image: onlibrarygo
+    container_name: app-onlibrary
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    links:
+      - db
+
+  db:
+    image: mysql:5.7
+    restart: unless-stopped
+    container_name: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_USER: onlibrary
+      MYSQL_PASSWORD: onlibrary
+      MYSQL_ROOT_PASSWORD: onlibrary
+      MYSQL_DATABASE: onlibrary
+
+      
+    
+

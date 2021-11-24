@@ -17,6 +17,7 @@ type(
 
 	GenreAddRequest struct {
 		Nama		string	`json:"nama"`
+		BookID		uuid.UUID	`json:"book_id"`
 	}
 
 )
@@ -74,9 +75,14 @@ func (controller GenreController) AddGenre (c echo.Context) error {
 
 	newGenre.GenreID = id;
 	newGenre.Nama = params.Nama
+	newGenre.GenreBookID = params.BookID
 
 
-	db.Create(&newGenre)
+
+	if g:=db.Create(&newGenre);g.Error!=nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"message":g.Error.Error()})
+	}
+
 
 	var r = struct {
 		common.GeneralResponseJSON

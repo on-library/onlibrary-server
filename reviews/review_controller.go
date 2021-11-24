@@ -58,11 +58,11 @@ func (controller ReviewController) AddReview(c echo.Context) error {
 
 	var review = reviewModel.Review{ID: newId,Comment: params.Comment,Rating: params.Rating,BookRefer: params.BookId}
 
-	if err:= db.First(&book, "id = ?", params.BookId); err.Error != nil {
+	if err:= db.First(&book, "book_id = ?", params.BookId); err.Error != nil {
 		var r = struct {
 			common.GeneralResponseJSON
 		}{
-			GeneralResponseJSON: common.GeneralResponseJSON{Message: "Booxxk not found"},
+			GeneralResponseJSON: common.GeneralResponseJSON{Message: "Book not found"},
 		}
 		fmt.Println(err.Error)
 		return c.JSON(http.StatusBadRequest, r)
@@ -94,7 +94,7 @@ func (controller ReviewController) DeleteReview(c echo.Context) error {
 
 	var review reviewModel.Review
 
-	if err := db.Where("id = ?", params.ID).Delete(&review); err!=nil{
+	if err := db.Where("review_id = ?", params.ID).Delete(&review); err!=nil{
 		var r = struct {
 			common.GeneralResponseJSON
 		}{
