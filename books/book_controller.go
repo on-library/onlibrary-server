@@ -138,11 +138,11 @@ func (controller BookController) AddBook(c echo.Context) error {
 	newBook.DeskripsiBuku = params.DeskripsiBuku
 	newBook.BookCategoryID = params.CategoryID
 	newBook.Penerbit = params.Penerbit
+	newBook.Penulis = params.Penulis
 	newBook.TahunTerbit = params.TahunTerbit
 	newBook.Stok = params.Stok
 	newBook.CreatedAt = time.Now()
 	newBook.UpdatedAt = time.Now()
-
 
 
 	db := database.GetInstance()
