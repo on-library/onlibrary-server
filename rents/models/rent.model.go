@@ -7,7 +7,18 @@ import (
 )
 
 type Rent struct {
-	ID				uuid.UUID	`gorm:"primaryKey" json:"id"`
+	ID							uuid.UUID	`gorm:"primaryKey" json:"id"`
+	// PinjamID					uuid.UUID	`gorm:"primaryKey" json:"pinjam_id"`
+	// TanggalPinjam				time.Time	`json:"tanggal_pinjam"`
+	// TanggalPengembalian			time.Time	`json:"tanggal_pengembalian"`
+	// TanggalPengembalianFinish	time.Time	`json:"tanggal_pengembalian_finish"`
+	// StatusPinjam				int			`json:"status_pinjam"`
+	// Denda						int			`json:"denda"`
+	// DeskripsiPeminjaman			string		`json:"deskripsi_peminjaman"`
+	// IsExtendConfirm				int			`json:"is_extend_confirm"`
+	// AlasanPerpanjangan			string		`json:"alasan_perpanjangan"`
+	
+
 	UserID			uuid.UUID	`gorm:"size:191" json:"user_id"`
 	BookID			uuid.UUID	`gorm:"size:191" json:"book_id"`
 	RentStatus		int			`json:"rent_status"`

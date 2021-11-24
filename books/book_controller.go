@@ -7,6 +7,7 @@ import (
 	modelCategory "onlibrary/category/models"
 	"onlibrary/common"
 	"onlibrary/database"
+	modelGenre "onlibrary/genre/models"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -20,14 +21,14 @@ type(
 
 	
 	AddBookRequest struct {
-		JudulBuku			string		`json:"judul_buku"`
-		DeskripsiBuku		string		`json:"deskripsi_buku"`
+		JudulBuku		string		`json:"judul_buku"`
+		DeskripsiBuku	string		`json:"deskripsi_buku"`
 		Penulis			string		`json:"penulis"`
-		CategoryID		uuid.UUID		`json:"category_id"`
+		CategoryID		uuid.UUID	`json:"category_id"`
 		Penerbit		string		`json:"penerbit"`
 		TahunTerbit		time.Time	`json:"tahun_terbit"`
 		Genres			[]string	`json:"genres"`	
-		Stok			int		`json:"stok"`
+		Stok			int			`json:"stok"`
 		CreatedAt		time.Time	`json:"created_at"`
 		UpdatedAt 		time.Time	`json:"updated_at"`
 	}
@@ -82,7 +83,8 @@ func (controller BookController) GetBooks(c echo.Context) error {
 	var books []models.Book
 
 	// TODO: Add filter using query params (title, author, publisher, category)
-	db.Preload("Reviews").Find(&books)
+	db.Preload("Reviews").Preload("Category").Preload("Genres").Find(&books)
+	
 
 	var r = struct {
 		common.GeneralResponseJSON
@@ -100,7 +102,7 @@ func (controller BookController) GetBook(c echo.Context) error {
 	bookId := c.Param("bookId")
 	db := database.GetInstance()
 	var book models.Book
-	err := db.Preload("Reviews").First(&book, "id = ?",bookId).Error
+	err := db.Preload("Reviews").Preload("Category").Preload("Genres").First(&book, "book_id = ?",bookId).Error
 	if err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "Book not found")
 	}
@@ -124,19 +126,24 @@ func (controller BookController) AddBook(c echo.Context) error {
 	}
 
 	var category modelCategory.Category 
+	// var genre modelGenre.Genre
 
 	var newBook models.Book
 
 	id := uuid.NewV1()
 
 
-	newBook.ID = id;
+	newBook.BookId = id;
 	newBook.JudulBuku = params.JudulBuku
-	newBook.TahunTerbit = params.TahunTerbit
 	newBook.DeskripsiBuku = params.DeskripsiBuku
 	newBook.BookCategoryID = params.CategoryID
+	newBook.Penerbit = params.Penerbit
+	newBook.TahunTerbit = params.TahunTerbit
+	newBook.Stok = params.Stok
+	newBook.CreatedAt = time.Now()
+	newBook.UpdatedAt = time.Now()
 
-	fmt.Println(params.Genres)
+
 
 	db := database.GetInstance()
 
@@ -149,8 +156,16 @@ func (controller BookController) AddBook(c echo.Context) error {
 		fmt.Println(err.Error)
 		return c.JSON(http.StatusBadRequest, r)
 	}
+	db.Create(newBook)
 	
 	db.Model(&category).Association("Books").Append(&newBook)
+	
+	for i :=0;i<len(params.Genres);i++{
+		var genre modelGenre.Genre
+		fmt.Println(params.Genres[i])
+		genre = modelGenre.Genre{GenreID: uuid.NewV4(),Nama: params.Genres[i],GenreBookID: newBook.BookId}
+		db.Create(genre)
+	}
 
 	var r = struct {
 		common.GeneralResponseJSON
@@ -196,7 +211,19 @@ func (controller BookController) DeleteBook(c echo.Context) error {
 
 	var book models.Book
 
-	db.Where("id = ?", params).Delete(&book)
+	if err:= db.First(&book, "book_id = ?", params); err.Error != nil {
+		var r = struct {
+			common.GeneralResponseJSON
+		}{
+			GeneralResponseJSON: common.GeneralResponseJSON{Message: "Book not found"},
+		}
+		fmt.Println(err.Error)
+		return c.JSON(http.StatusBadRequest, r)
+	}
+
+db.Where("book_id = ?", params).Delete(&book)
+
+	// fmt.Println(d.Error)
 
 	var r = struct {
 		common.GeneralResponseJSON
