@@ -79,7 +79,7 @@ func (controller AuthController) Profile(c echo.Context) error {
 
 	var userInfo models.Auth
 
-	db.First(&userInfo,"username = ?",claims.Username)
+	db.Preload("Rents.Book").Preload("Rents.Book.Genres").Preload("Rents.Book.Category").Preload("Rents.Book.Reviews").Preload("Rents").First(&userInfo,"username = ?",claims.Username)
 	
 	
 	
