@@ -13,6 +13,7 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	uuid "github.com/satori/go.uuid"
+	"gorm.io/gorm/clause"
 )
 
 // status peminjaman = 1 => buku menunggu diambil
@@ -24,6 +25,12 @@ import (
 type(
 	RentController struct{
 
+	}
+
+	InfoUserRentAll struct{
+		models.Rent
+		username	string
+		name		string
 	}
 
 	RentAddRequest struct {
@@ -44,6 +51,24 @@ type(
 		RentID			string		`json:"rent_id"`
 	}
 
+	TakeRentRequest struct {
+		RentID		string		`json:"rent_id"`
+	}
+
+	ExtendRentRequest struct {
+		RentID				string		`json:"rent_id"`
+		AlasanPerpanjangan	string		`json:"alasan_perpanjangan"`
+
+	}
+
+	ConfirmExtendRentRequest struct {
+		RentID			string		`json:"rent_id"`
+	}
+
+	DeclineExtendRentRequest struct {
+		RentID			string		`json:"rent_id"`
+	}
+
 	DeclineRentRequest struct {
 		RentID			string		`json:"rent_id"`
 	}
@@ -54,25 +79,73 @@ type(
 func (controller RentController) Routes() []common.Route{
 	return []common.Route{
 		{
+			Method: echo.GET,
+			Path: "/rent/all",
+			Handler: controller.GetRents,
+		},
+		{
 			Method: echo.POST,
 			Path: "/rent/add",
 			Handler:controller.RentBook,
 			Middleware: []echo.MiddlewareFunc{common.JwtMiddleware()},
 		},
+		
 		{
 			Method: echo.POST,
 			Path: "/rent/confirm",
 			Handler: controller.ConfirmRentBook,
 		},
 		{
+			Method:echo.POST,
+			Path: "/rent/take",
+			Handler: controller.TakeRent,
+		},
+		{
+			Method:echo.POST,
+			Path:"/rent/extend",
+			Handler: controller.ExtendRent,
+		},
+		{
+			Method: echo.POST,
+			Path: "/rent/extend/confirm",
+			Handler: controller.ConfirmExtendRent,
+		},
+		{
+			Method: echo.POST,
+			Path: "/rent/extend/confirm",
+			Handler: controller.DeclineExtendRent,
+		},
+		{
 			Method: echo.POST,
 			Path: "/rent/decline",
 			Handler: controller.DeclineRentBook,	
 		},
+		{
+			Method: echo.POST,
+			Path: "/rent/return",
+			Handler: controller.ReturnRent,
+		},
 	}
 }
 
+func (controller RentController) GetRents(c echo.Context) error {
+	db:= database.GetInstance()
 
+	
+	var rents []models.Rent
+
+
+	
+
+	d:=db.Preload("Book.Category").Preload(clause.Associations).Find(&rents)
+
+	fmt.Println(d)
+
+	return c.JSON(http.StatusOK, echo.Map{
+		"message":"success",
+		"data":rents,
+	})
+}
 
 func (controller RentController) RentBook(c echo.Context) error {
 	db := database.GetInstance()
@@ -91,6 +164,7 @@ func (controller RentController) RentBook(c echo.Context) error {
 	var visitor modelAuth.Auth
 	var newRent models.Rent
 	var book modelBook.Book
+
 
 	if err:= db.First(&book, "book_id = ?", params.BookID);err.Error!=nil{
 		return c.JSON(http.StatusBadRequest,echo.Map{
@@ -116,21 +190,21 @@ func (controller RentController) RentBook(c echo.Context) error {
 	newRent.TanggalPengembalian = time.Now().AddDate(0,0,7)
 	newRent.StatusPinjam = 0
 	newRent.IsExtendConfirm = 0
-	newRent.Denda = 500
+	newRent.Denda = 0
 	newRent.DeskripsiPeminjaman = params.DeskirpsiPeminjaman
 	newRent.IsExtendConfirm = 0
 	newRent.AlasanPerpanjangan = ""
 
 	
+
 	db.Model(&visitor).Association("Rents").Append(&newRent)
 
 	db.Preload("Reviews").Preload("Category").Preload("Genres").First(&book, "book_id = ?",params.BookID)
 
-	fmt.Println(&book)
 
-	d:=db.Model(&book).Association("Rents").Append(&newRent)
+	db.Model(&book).Association("Rents").Append(&newRent)
+
 	
-	fmt.Println(d)
 
 	return c.JSON(http.StatusOK,echo.Map{"message":"Rent added","data":newRent})
 }
@@ -155,7 +229,104 @@ func (controller RentController) ConfirmRentBook(c echo.Context) error {
 
 	db.Save(&rent)
 
-	return c.JSON(http.StatusOK,echo.Map{"message":"Rent confirmed", "rent_id":rent.PinjamID,"rent_status":rent.PinjamID})
+	return c.JSON(http.StatusOK,echo.Map{"message":"Rent confirmed", "rent_id":rent.PinjamID,"rent_status":rent.StatusPinjam})
+}
+
+func (controller RentController) TakeRent(c echo.Context) error {
+	db:= database.GetInstance()
+
+	params := new(TakeRentRequest)
+
+	if err:= c.Bind(params);err!=nil{
+		return c.JSON(http.StatusBadRequest, err)
+	}
+
+	var rent models.Rent
+
+	if err:= db.Preload(clause.Associations).First(&rent, "pinjam_id = ?", params.RentID);err!= nil {
+		return echo.NewHTTPError(http.StatusNotFound,echo.Map{"message":"Pinjam ID not found"})
+	}
+	
+	rent.StatusPinjam = 2
+	rent.Book.Stok = rent.Book.Stok - 1
+	
+	db.Save(&rent)
+
+	return c.JSON(http.StatusOK, echo.Map{"message":"Book picked up by user", "rent_id":rent.PinjamID,"rent_status":rent.StatusPinjam,"stok":rent.Book.Stok})
+
+}
+
+func (controller RentController) ExtendRent(c echo.Context) error {
+	db:= database.GetInstance()
+
+	params:= new(ExtendRentRequest)
+
+	if err:= c.Bind(params);err!=nil {
+		return c.JSON(http.StatusBadRequest, err)
+	}
+
+	var rent models.Rent
+
+	if err:= db.Preload(clause.Associations).First(&rent, "pinjam_id = ?", params.RentID);err!= nil {
+		return echo.NewHTTPError(http.StatusNotFound,echo.Map{"message":"Pinjam ID not found"})
+	}
+
+	if rent.IsExtendConfirm== 1{
+		return c.JSON(http.StatusBadRequest,echo.Map{"message":"Sudah pernah melakukan perpanjangan", "status":"failed"})
+	}
+
+	rent.StatusPinjam = 3
+	rent.AlasanPerpanjangan = params.AlasanPerpanjangan
+	db.Save(&rent)
+
+	return c.JSON(http.StatusOK, echo.Map{"message":"Konfirmasi perpanjangan telah dikirim","rent_id":rent.PinjamID,"rent_status":rent.StatusPinjam})
+}
+
+func (controller RentController) ConfirmExtendRent(c echo.Context) error {
+	db := database.GetInstance()
+
+	params := new(ConfirmExtendRentRequest)
+
+	if err := c.Bind(params); err!=nil {
+		return c.JSON(http.StatusBadRequest, err)
+	}
+
+	var rent models.Rent
+
+	if err := db.Preload(clause.Associations).First(&rent, "pinjam_id = ?", params.RentID); err != nil {
+		return echo.NewHTTPError(http.StatusNotFound,echo.Map{"message":"Pinjam ID not found"})
+	}
+
+	rent.StatusPinjam = 2
+	rent.IsExtendConfirm = 1
+	rent.TanggalPengembalian = rent.TanggalPengembalian.AddDate(0,0,7)
+
+	db.Save(&rent)
+
+	return c.JSON(http.StatusOK, echo.Map{"message":"Perpanjangan di konfirmasi"})
+}
+
+func (controller RentController) DeclineExtendRent(c echo.Context) error {
+	db := database.GetInstance()
+
+	params := new(DeclineExtendRentRequest)
+
+	if err := c.Bind(params);err!= nil {
+		return c.JSON(http.StatusBadRequest, err)
+	}
+
+	var rent models.Rent
+
+	if err := db.First(&rent, "pinjam_id = ?", params.RentID);err!=nil{
+		return echo.NewHTTPError(http.StatusNotFound,echo.Map{"message":"Pinjam ID not found"})
+	}
+
+	if time.Now().Before(rent.TanggalPengembalian) {
+		rent.StatusPinjam = -3
+	} 
+
+
+	return c.JSON(http.StatusOK,echo.Map{"message":"Rent declined","rent_id":params.RentID, "rent_status":rent.StatusPinjam})
 }
 
 func (controller RentController) DeclineRentBook(c echo.Context) error {
@@ -169,7 +340,7 @@ func (controller RentController) DeclineRentBook(c echo.Context) error {
 
 	var rent models.Rent
 
-	if result := db.First(&rent,"id = ?",params.RentID); result.Error != nil {
+	if result := db.First(&rent,"pinjam_id = ?",params.RentID); result.Error != nil {
 		return echo.NewHTTPError(http.StatusNotFound,echo.Map{"message":"Rent ID not found"})
 	}
 
@@ -177,9 +348,40 @@ func (controller RentController) DeclineRentBook(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, echo.Map{"message":"Failed"})
 	}
 
-	rent.StatusPinjam = -1
 	
-	return c.JSON(http.StatusOK, echo.Map{"message":"Rent declined","rent_id":params.RentID, "rent_status":rent.PinjamID})
+	rent.StatusPinjam = -3
+	
+	return c.JSON(http.StatusOK, echo.Map{"message":"Rent declined","rent_id":params.RentID, "rent_status":rent.StatusPinjam})
 }
 
-// func (controller RentController) RentReturnRequest(c echo.Context) error 
+func (controller RentController) ReturnRent(c echo.Context) error  {
+	db:= database.GetInstance()
+
+	params := new(RentReturnRequest)
+
+	if err := c.Bind(params); err!=nil {
+		return c.JSON(http.StatusBadRequest, err)
+	}
+
+	var rent models.Rent
+
+	if err := db.Preload(clause.Associations).First(&rent, "pinjam_id = ?", params.RentID); err != nil {
+		return echo.NewHTTPError(http.StatusNotFound,echo.Map{"message":"Pinjam ID not found"})
+	}
+
+	dateNow := time.Now()
+
+	if dateNow.Before(rent.TanggalPengembalian) {
+		rent.StatusPinjam = -2
+		rent.Denda = 0
+	} else {
+		rent.StatusPinjam = -2
+		rent.Denda = 500 * (rent.TanggalPengembalian.Day() - dateNow.Day())
+	}
+	
+	rent.TanggalPengembalianFinish = &dateNow
+	rent.Book.Stok += 1
+
+	return c.JSON(http.StatusOK, echo.Map{"message":"Buku berhasil dikembalikan","rent_id":rent.PinjamID,"book":rent.Book})
+	
+}

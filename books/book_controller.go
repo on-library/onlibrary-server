@@ -126,7 +126,6 @@ func (controller BookController) AddBook(c echo.Context) error {
 	}
 
 	var category modelCategory.Category 
-	// var genre modelGenre.Genre
 
 	var newBook models.Book
 
