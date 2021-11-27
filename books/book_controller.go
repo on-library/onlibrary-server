@@ -189,7 +189,7 @@ func (controller BookController) EditBook(c echo.Context) error {
 	var book models.Book
 
 
-	db.First(&book, "id = ?", params.ID)
+	db.First(&book, "book_id = ?", params.ID)
 
 	
 	

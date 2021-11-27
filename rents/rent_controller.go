@@ -1,7 +1,10 @@
 package rents
 
 import (
+	"fmt"
 	"net/http"
+	modelAuth "onlibrary/auth/models"
+	modelBook "onlibrary/books/models"
 	"onlibrary/common"
 	"onlibrary/database"
 	"onlibrary/rents/models"
@@ -12,6 +15,12 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+// status peminjaman = 1 => buku menunggu diambil
+// status peminjaman = 2 => buku sedang dipinjam
+// status peminjaman = 3 => buku permintaan
+// status peminjaman = 4=> buku selesai
+//
+
 type(
 	RentController struct{
 
@@ -21,6 +30,7 @@ type(
 		BookID			uuid.UUID		`json:"book_id"`
 		CreatedAt		time.Time	`json:"created_at"`
 		UpdatedAt 		time.Time	`json:"updated_at"`
+		DeskirpsiPeminjaman string	`json:"deskripsi_peminjaman"`
 	}
 
 	RentInformation struct {
@@ -78,18 +88,49 @@ func (controller RentController) RentBook(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest,err)
 	}
 
+	var visitor modelAuth.Auth
 	var newRent models.Rent
+	var book modelBook.Book
+
+	if err:= db.First(&book, "book_id = ?", params.BookID);err.Error!=nil{
+		return c.JSON(http.StatusBadRequest,echo.Map{
+			"message":"Book not found",
+		})
+	}
+
+	if err:= db.First(&visitor, "id = ?", claims.ID); err.Error != nil {
+		var r = struct {
+			common.GeneralResponseJSON
+		}{
+			GeneralResponseJSON: common.GeneralResponseJSON{Message: "User not found"},
+		}
+		fmt.Println(err.Error)
+		return c.JSON(http.StatusBadRequest, r)
+	}
 	
 	id := uuid.NewV1()
-	newRent.ID = id
-	newRent.BookID = params.BookID
-	newRent.UserID = claims.ID
-	newRent.RentAt = time.Now()
-	newRent.EndAt = time.Now().AddDate(0,0,7)
-	newRent.RentStatus = 0
+	newRent.PinjamID = id
+	newRent.BookRentID = params.BookID
+	newRent.UserRef = claims.ID
+	newRent.TanggalPinjam = time.Now()
+	newRent.TanggalPengembalian = time.Now().AddDate(0,0,7)
+	newRent.StatusPinjam = 0
 	newRent.IsExtendConfirm = 0
+	newRent.Denda = 500
+	newRent.DeskripsiPeminjaman = params.DeskirpsiPeminjaman
+	newRent.IsExtendConfirm = 0
+	newRent.AlasanPerpanjangan = ""
+
 	
-	db.Create(&newRent)
+	db.Model(&visitor).Association("Rents").Append(&newRent)
+
+	db.Preload("Reviews").Preload("Category").Preload("Genres").First(&book, "book_id = ?",params.BookID)
+
+	fmt.Println(&book)
+
+	d:=db.Model(&book).Association("Rents").Append(&newRent)
+	
+	fmt.Println(d)
 
 	return c.JSON(http.StatusOK,echo.Map{"message":"Rent added","data":newRent})
 }
@@ -105,16 +146,16 @@ func (controller RentController) ConfirmRentBook(c echo.Context) error {
 
 	var rent models.Rent
 
-	result := db.First(&rent,"id = ?",params.RentID)
+	result := db.First(&rent,"pinjam_id = ?",params.RentID)
 	if(result.Error != nil){
-		return echo.NewHTTPError(http.StatusNotFound,echo.Map{"message":"Rent ID not found"})
+		return echo.NewHTTPError(http.StatusNotFound,echo.Map{"message":"Pinjam ID not found"})
 	}
 	
-	rent.RentStatus = 1
+	rent.StatusPinjam = 1
 
 	db.Save(&rent)
 
-	return c.JSON(http.StatusOK,echo.Map{"message":"Rent confirmed", "rent_id":rent.ID,"rent_status":rent.RentStatus})
+	return c.JSON(http.StatusOK,echo.Map{"message":"Rent confirmed", "rent_id":rent.PinjamID,"rent_status":rent.PinjamID})
 }
 
 func (controller RentController) DeclineRentBook(c echo.Context) error {
@@ -132,13 +173,13 @@ func (controller RentController) DeclineRentBook(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound,echo.Map{"message":"Rent ID not found"})
 	}
 
-	if(rent.RentStatus != 0){
+	if(rent.StatusPinjam != 0){
 		return c.JSON(http.StatusBadRequest, echo.Map{"message":"Failed"})
 	}
 
-	rent.RentStatus = -1
+	rent.StatusPinjam = -1
 	
-	return c.JSON(http.StatusOK, echo.Map{"message":"Rent declined","rent_id":rent.ID, "rent_status":rent.RentStatus})
+	return c.JSON(http.StatusOK, echo.Map{"message":"Rent declined","rent_id":params.RentID, "rent_status":rent.PinjamID})
 }
 
 // func (controller RentController) RentReturnRequest(c echo.Context) error 
