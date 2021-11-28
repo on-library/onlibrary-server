@@ -112,7 +112,7 @@ func (controller RentController) Routes() []common.Route{
 		},
 		{
 			Method: echo.POST,
-			Path: "/rent/extend/confirm",
+			Path: "/rent/extend/decline",
 			Handler: controller.DeclineExtendRent,
 		},
 		{
@@ -137,7 +137,7 @@ func (controller RentController) GetRents(c echo.Context) error {
 
 	
 
-	d:=db.Preload("Book.Category").Preload(clause.Associations).Find(&rents)
+	d:=db.Preload("Book.Category").Preload(clause.Associations).Order("tanggal_pinjam desc").Find(&rents)
 
 	fmt.Println(d)
 
@@ -243,7 +243,9 @@ func (controller RentController) TakeRent(c echo.Context) error {
 
 	var rent models.Rent
 
-	if err:= db.Preload(clause.Associations).First(&rent, "pinjam_id = ?", params.RentID);err!= nil {
+	fmt.Println(params.RentID)
+
+	if err:= db.Preload(clause.Associations).First(&rent, "pinjam_id = ?", params.RentID);err.Error!= nil {
 		return echo.NewHTTPError(http.StatusNotFound,echo.Map{"message":"Pinjam ID not found"})
 	}
 	
@@ -267,7 +269,9 @@ func (controller RentController) ExtendRent(c echo.Context) error {
 
 	var rent models.Rent
 
-	if err:= db.Preload(clause.Associations).First(&rent, "pinjam_id = ?", params.RentID);err!= nil {
+	fmt.Println(params.RentID)
+
+	if err:= db.Preload(clause.Associations).First(&rent, "pinjam_id = ?", params.RentID);err.Error!= nil {
 		return echo.NewHTTPError(http.StatusNotFound,echo.Map{"message":"Pinjam ID not found"})
 	}
 
@@ -293,7 +297,7 @@ func (controller RentController) ConfirmExtendRent(c echo.Context) error {
 
 	var rent models.Rent
 
-	if err := db.Preload(clause.Associations).First(&rent, "pinjam_id = ?", params.RentID); err != nil {
+	if err := db.Preload(clause.Associations).First(&rent, "pinjam_id = ?", params.RentID); err.Error != nil {
 		return echo.NewHTTPError(http.StatusNotFound,echo.Map{"message":"Pinjam ID not found"})
 	}
 
@@ -317,13 +321,16 @@ func (controller RentController) DeclineExtendRent(c echo.Context) error {
 
 	var rent models.Rent
 
-	if err := db.First(&rent, "pinjam_id = ?", params.RentID);err!=nil{
+	if err := db.First(&rent, "pinjam_id = ?", params.RentID);err.Error!=nil{
 		return echo.NewHTTPError(http.StatusNotFound,echo.Map{"message":"Pinjam ID not found"})
 	}
 
 	if time.Now().Before(rent.TanggalPengembalian) {
-		rent.StatusPinjam = -3
+		rent.StatusPinjam = 2
+		rent.IsExtendConfirm = 0
 	} 
+
+	db.Save(&rent)
 
 
 	return c.JSON(http.StatusOK,echo.Map{"message":"Rent declined","rent_id":params.RentID, "rent_status":rent.StatusPinjam})
@@ -351,6 +358,7 @@ func (controller RentController) DeclineRentBook(c echo.Context) error {
 	
 	rent.StatusPinjam = -3
 	
+	db.Save(&rent)
 	return c.JSON(http.StatusOK, echo.Map{"message":"Rent declined","rent_id":params.RentID, "rent_status":rent.StatusPinjam})
 }
 
@@ -365,22 +373,23 @@ func (controller RentController) ReturnRent(c echo.Context) error  {
 
 	var rent models.Rent
 
-	if err := db.Preload(clause.Associations).First(&rent, "pinjam_id = ?", params.RentID); err != nil {
+	if err := db.Preload(clause.Associations).First(&rent, "pinjam_id = ?", params.RentID); err.Error != nil {
 		return echo.NewHTTPError(http.StatusNotFound,echo.Map{"message":"Pinjam ID not found"})
 	}
 
 	dateNow := time.Now()
 
 	if dateNow.Before(rent.TanggalPengembalian) {
-		rent.StatusPinjam = -2
+		rent.StatusPinjam = -3
 		rent.Denda = 0
 	} else {
-		rent.StatusPinjam = -2
+		rent.StatusPinjam = -3
 		rent.Denda = 500 * (rent.TanggalPengembalian.Day() - dateNow.Day())
 	}
 	
 	rent.TanggalPengembalianFinish = &dateNow
 	rent.Book.Stok += 1
+	db.Save(&rent)
 
 	return c.JSON(http.StatusOK, echo.Map{"message":"Buku berhasil dikembalikan","rent_id":rent.PinjamID,"book":rent.Book})
 	

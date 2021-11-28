@@ -12,6 +12,7 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	uuid "github.com/satori/go.uuid"
+	"gorm.io/gorm"
 )
 
 type(
@@ -79,8 +80,9 @@ func (controller AuthController) Profile(c echo.Context) error {
 
 	var userInfo models.Auth
 
-	db.Preload("Rents.Book").Preload("Rents.Book.Genres").Preload("Rents.Book.Category").Preload("Rents.Book.Reviews").Preload("Rents").First(&userInfo,"username = ?",claims.Username)
-	
+	db.Preload("Rents.Book").Preload("Rents.Book.Genres").Preload("Rents.Book.Category").Preload("Rents.Book.Reviews").Preload("Rents",func(db *gorm.DB) *gorm.DB{
+		return db.Order("rents.updated_at DESC")
+	}).First(&userInfo,"username = ?",claims.Username)
 	
 	
 

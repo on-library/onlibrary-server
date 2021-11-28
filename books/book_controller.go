@@ -220,7 +220,16 @@ func (controller BookController) DeleteBook(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, r)
 	}
 
-db.Where("book_id = ?", params).Delete(&book)
+	// for i :=0;i<len(book.Genres);i++{
+	// 	var genre modelGenre.Genre
+	// 	db.Where("genre_id = ?", book.Genres[i].GenreID).Delete(&genre)
+	// }
+
+	db.Model(&book).Association("Genres").Clear()
+
+	
+
+	db.Where("book_id = ?", params).Delete(&book)
 
 	// fmt.Println(d.Error)
 
