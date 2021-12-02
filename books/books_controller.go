@@ -15,7 +15,7 @@ import (
 )
 
 type(
-	BookController struct{
+	BooksController struct{
 
 	}
 
@@ -43,7 +43,7 @@ type(
 )
 
 
-func (controller BookController) Routes() []common.Route {
+func (controller BooksController) Routes() []common.Route {
 	return []common.Route {
 		{
 			Method: echo.GET,
@@ -78,7 +78,7 @@ func (controller BookController) Routes() []common.Route {
 	}
 }
 
-func (controller BookController) GetBooks(c echo.Context) error {
+func (controller BooksController) GetBooks(c echo.Context) error {
 	db := database.GetInstance()
 	var books []models.Book
 
@@ -98,7 +98,7 @@ func (controller BookController) GetBooks(c echo.Context) error {
 	return c.JSON(http.StatusOK, r)
 }
 
-func (controller BookController) GetBook(c echo.Context) error {
+func (controller BooksController) GetBook(c echo.Context) error {
 	bookId := c.Param("bookId")
 	db := database.GetInstance()
 	var book models.Book
@@ -118,7 +118,7 @@ func (controller BookController) GetBook(c echo.Context) error {
 }
 
 
-func (controller BookController) AddBook(c echo.Context) error {
+func (controller BooksController) AddBook(c echo.Context) error {
 	params := new(AddBookRequest)
 
 	if err := c.Bind(params); err!=nil{
@@ -177,7 +177,7 @@ func (controller BookController) AddBook(c echo.Context) error {
 
 }
 
-func (controller BookController) EditBook(c echo.Context) error {
+func (controller BooksController) EditBook(c echo.Context) error {
 	db := database.GetInstance()
 	params := new(EditBookRequest)
 
@@ -204,7 +204,7 @@ func (controller BookController) EditBook(c echo.Context) error {
 	return c.JSON(http.StatusOK, book)
 }
 
-func (controller BookController) DeleteBook(c echo.Context) error {
+func (controller BooksController) DeleteBook(c echo.Context) error {
 	params := c.Param("bookId")
 	db := database.GetInstance()
 
@@ -243,7 +243,7 @@ func (controller BookController) DeleteBook(c echo.Context) error {
 	return c.JSON(http.StatusOK, r)
 }
 
-func (controller BookController) FilterBooks(c echo.Context) error {
+func (controller BooksController) FilterBooks(c echo.Context) error {
 	//
 	return c.JSON(http.StatusOK, "D")
 }

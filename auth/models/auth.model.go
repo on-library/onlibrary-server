@@ -15,10 +15,9 @@ type Auth struct {
 	Password		string				`json:"-"`
 	Role			int					`json:"role"`
 	Name			string				`json:"name"`
+	Nim				string				`json:"nim"`
 	Email			string				`json:"email"`
 	Address			string				`json:"address"`
-	City			string				`json:"city"`
-	Province		string				`json:"province"`
 	IsVerify		int					`json:"is_verify"`
 	VerifyCode		int					`json:"verify_code"`		
 	Rents			[]rentsModel.Rent	`gorm:"foreignKey:UserRef" json:"rents"`		

@@ -15,7 +15,7 @@ import (
 func DefineApiRoute(e *echo.Echo){
 	controllers := []common.Controller{
 		auth.AuthController{},
-		books.BookController{},
+		books.BooksController{},
 		reviews.ReviewController{},
 		rents.RentController{},
 		genre.GenreController{},

@@ -7,6 +7,7 @@ import (
 	"onlibrary/auth/models"
 	"onlibrary/common"
 	"onlibrary/database"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -27,16 +28,16 @@ type(
 
 	RegisterRequest struct {
 		LoginRequest
-		Name		string		`json:"name" validate:"required"`
-		Email		string		`json:"email" validate:"required,email"`
-		Address		string		`json:"address" validate:"required"`
-		City		string		`json:"city" validate:"required"`
-		Province	string		`json:"province" validate:"required"`		
+		Name			string		`json:"name" validate:"required,min=6"`
+		Email			string		`json:"email" validate:"required,email,min=6"`
+		Nim				string		`json:"nim" validate:"required,min=6"`
+		TanggalLahir	time.Time	`json:"tanggal_lahir" validate:"required"`
+		Address			string		`json:"address" validate:"required"`	
 	}
 
 	VerifyRequest struct {
 		Username	string		`json:"username" validate:"required"`
-		Code		int		`json:"code" validate:"required"`
+		Code		int			`json:"code" validate:"required"`
 	}
 
 
@@ -65,70 +66,12 @@ func (controller AuthController) Routes() []common.Route {
 			Path: "/auth/verify",
 			Handler: controller.VerifyAccount,
 		},
-		
+		{
+			Method: echo.GET,
+			Path: "/auth/all",
+			Handler: controller.GetAuths,
+		},
 	}
-}
-
-
-
-func (controller AuthController) Profile(c echo.Context) error {
-	db:= database.GetInstance()
-
-	user := c.Get("user").(*jwt.Token)
-	claims := user.Claims.(*common.JwtCustomClaims)
-
-
-	var userInfo models.Auth
-
-	db.Preload("Rents.Book").Preload("Rents.Book.Genres").Preload("Rents.Book.Category").Preload("Rents.Book.Reviews").Preload("Rents",func(db *gorm.DB) *gorm.DB{
-		return db.Order("rents.updated_at DESC")
-	}).First(&userInfo,"username = ?",claims.Username)
-	
-	
-
-	return c.JSON(http.StatusOK, echo.Map{
-		"user":userInfo,
-		
-	})
-}
-
-func (controller AuthController) VerifyAccount (c echo.Context) error {
-	db := database.GetInstance()
-	params := new(VerifyRequest)
-
-	if err:= c.Bind(params); err != nil {
-		return c.JSON(http.StatusBadRequest, err)
-	}
-
-	if err:= c.Validate(params); err != nil {
-		var r = struct {
-			common.GeneralResponseJSON
-			Errors error		`json:"errors"`
-		}{
-			GeneralResponseJSON: common.GeneralResponseJSON{Message: "Error"},
-			Errors: err,
-		}
-		return echo.NewHTTPError(http.StatusBadRequest, r)
-	}
-
-	var user models.Auth
-
-	var r = struct {
-		common.GeneralResponseJSON
-	}{
-		GeneralResponseJSON: common.GeneralResponseJSON{Message:"Invalid code"},
-	}
-
-	if db.First(&user, "username = ?", params.Username); user.VerifyCode != params.Code {
-		return c.JSON(http.StatusBadRequest,r)
-	}
-
-	
-
-	return c.JSON(http.StatusOK,echo.Map{
-		"status":"success",
-		"message":"Account verified!",
-	})
 }
 
 func (controller AuthController) Login(c echo.Context) error {
@@ -144,7 +87,7 @@ func (controller AuthController) Login(c echo.Context) error {
 	var r = struct {
 		common.GeneralResponseJSON
 	}{
-		GeneralResponseJSON: common.GeneralResponseJSON{Message:"Username/password invalid"},
+		GeneralResponseJSON: common.GeneralResponseJSON{Message:"Username/password tidak dikenali"},
 	}
 
 	if db.First(&user, "username = ?", params.Username);user.Username != params.Username{
@@ -173,7 +116,6 @@ func (controller AuthController) Login(c echo.Context) error {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	t, err := token.SignedString([]byte("SECRETKEY"))
-	fmt.Print(t)
 	if err != nil {
 		fmt.Print(err)
 		return err
@@ -219,20 +161,107 @@ func (controller AuthController) Register(c echo.Context) error {
 
 	var newUser models.Auth
 
+
 	newUser.ID = newID
 	newUser.Username = params.Username
 	newUser.Password = hashedPassword
 	newUser.Role = 1
+	newUser.Nim = params.Nim
 	newUser.Email = params.Email
-	newUser.City = params.City
-	newUser.Province = params.Province
 	newUser.Address = params.Address
 	newUser.IsVerify = 0
 	newUser.VerifyCode =rand.Intn(9999)
 
-	fmt.Println(rand.Intn(9999))
+
+	var verifLink = "http://ees-tes1203.s3-website-ap-southeast-2.amazonaws.com/#/verify/" + strconv.Itoa(newUser.VerifyCode) + "?username="+user.Username
+
+	var email = EmailInfo{
+		Body: fmt.Sprintf("Harap kunjungi link <a href='%s'>ini</a> untuk verifikasi akun anda", verifLink),
+		Subject: "Verifikasi akun",
+		From: "onlibraryid@gmail.com",
+		To: newUser.Email,
+	}
+
+	SendEmail(email)
 
 	db.Create(&newUser)
 
 	return c.JSON(http.StatusOK, params)
+}
+
+
+
+func (controller AuthController) Profile(c echo.Context) error {
+	db:= database.GetInstance()
+
+	user := c.Get("user").(*jwt.Token)
+	claims := user.Claims.(*common.JwtCustomClaims)
+
+	var userInfo models.Auth
+
+	db.Preload("Rents.Book").Preload("Rents.Book.Genres").Preload("Rents.Book.Category").Preload("Rents.Book.Reviews").Preload("Rents",func(db *gorm.DB) *gorm.DB{
+		return db.Order("rents.updated_at DESC")
+	}).First(&userInfo,"username = ?",claims.Username)
+	
+	return c.JSON(http.StatusOK, echo.Map{
+		"user":userInfo,
+		
+	})
+}
+
+func (controller AuthController) VerifyAccount (c echo.Context) error {
+	db := database.GetInstance()
+	params := new(VerifyRequest)
+
+	if err:= c.Bind(params); err != nil {
+		return c.JSON(http.StatusBadRequest, err)
+	}
+
+	if err:= c.Validate(params); err != nil {
+		var r = struct {
+			common.GeneralResponseJSON
+			Errors error		`json:"errors"`
+		}{
+			GeneralResponseJSON: common.GeneralResponseJSON{Message: "Error"},
+			Errors: err,
+		}
+		return echo.NewHTTPError(http.StatusBadRequest, r)
+	}
+
+	var user models.Auth
+
+
+	if err := db.First(&user,"username = ?", params.Username); err.Error !=nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"message":"Username not found","status":"error"})
+	}
+
+	if user.VerifyCode != params.Code {
+		return c.JSON(http.StatusBadRequest, echo.Map{"message":"Invalid code","status":"error"})
+	}
+
+	user.IsVerify = 1
+
+	return c.JSON(http.StatusOK,echo.Map{
+		"status":"success",
+		"message":"Account verified!",
+	})
+}
+
+func (controller AuthController) GetAuths(c echo.Context) error {
+	db := database.GetInstance()
+	var auths []models.Auth
+
+	db.Find(&auths)
+	
+
+	var r = struct {
+		common.GeneralResponseJSON
+		Data []models.Auth		`json:"data"`
+	}{}
+
+
+	r.Message = "Success"
+	r.Data = auths
+
+	return c.JSON(http.StatusOK, r)
 }
