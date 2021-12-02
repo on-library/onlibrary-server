@@ -40,6 +40,12 @@ type(
 		Code		int			`json:"code" validate:"required"`
 	}
 
+	EditRequest struct {
+		ID			uuid.UUID		`json:"id"`
+		Nama		string			`json:"name" validate:"required"`
+		Email		string			`json:"email" validate:"required,email"`
+	}
+
 
 )
 
@@ -65,6 +71,11 @@ func (controller AuthController) Routes() []common.Route {
 			Method: echo.POST,
 			Path: "/auth/verify",
 			Handler: controller.VerifyAccount,
+		},
+		{
+			Method: echo.POST,
+			Path: "/auth/edit",
+			Handler: controller.EditAccount,
 		},
 		{
 			Method: echo.GET,
@@ -264,4 +275,31 @@ func (controller AuthController) GetAuths(c echo.Context) error {
 	r.Data = auths
 
 	return c.JSON(http.StatusOK, r)
+}
+
+func (controller AuthController) EditAccount (c echo.Context) error {
+	db:= database.GetInstance()
+	params := new(EditRequest)
+	
+	if err:=c.Bind(params);err!=nil{
+		return c.JSON(http.StatusBadRequest,err)
+	}
+
+	var auth models.Auth
+
+	if err := db.First(&auth, "id = ?", params.ID); err.Error !=nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"message":"User not found","status":"error"})
+	}
+
+	auth.Name = params.Nama
+	auth.Email = params.Email
+
+	db.Save(&auth)
+
+	return c.JSON(http.StatusOK,
+		echo.Map{
+			"message":"Account changed successfully",
+			"status":"success",
+			"data":auth,
+		})
 }
