@@ -8,9 +8,6 @@ import (
 )
 
 
-type UserInfo struct {
-	Username					string			`json:"username"`
-}
 type Rent struct {
 	PinjamID					uuid.UUID		`gorm:"primaryKey" json:"pinjam_id"`
 	TanggalPinjam				time.Time		`json:"tanggal_pinjam"`
@@ -21,7 +18,7 @@ type Rent struct {
 	DeskripsiPeminjaman			string			`json:"deskripsi_peminjaman"`
 	IsExtendConfirm				int				`json:"is_extend_confirm"`
 	AlasanPerpanjangan			string			`json:"alasan_perpanjangan"`
-	UserRef						uuid.UUID		`gorm:"size:191" json:"user_ref"`
+	AuthID						uuid.UUID		`gorm:"size:191" json:"user_id"`
 	BookRentID					uuid.UUID		`gorm:"size:191" json:"book_rent_id"`
 	Book						bookModel.Book	`gorm:"foreignKey:BookRentID" json:"book"`
 	CreatedAt					time.Time		`json:"created_at"`

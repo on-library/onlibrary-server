@@ -33,6 +33,10 @@ type(
 		UpdatedAt 		time.Time	`json:"updated_at"`
 	}
 
+	FindBookRequest struct {
+		BookTitle		string		`json:"book_title"`
+	}
+
 	EditBookRequest struct {
 		ID				uuid.UUID
 		AddBookRequest
@@ -54,6 +58,11 @@ func (controller BooksController) Routes() []common.Route {
 			Method: echo.GET,
 			Path: "/book/all",
 			Handler: controller.GetBooks,
+		},
+		{
+			Method: echo.POST,
+			Path: "/book/find",
+			Handler: controller.FindBook,
 		},
 		{
 			Method: echo.GET,
@@ -96,6 +105,29 @@ func (controller BooksController) GetBooks(c echo.Context) error {
 	r.Data = books
 
 	return c.JSON(http.StatusOK, r)
+}
+
+func (controller BooksController) FindBook(c echo.Context) error {
+	db := database.GetInstance()	
+	var books []models.Book
+
+	params := new(FindBookRequest)
+
+	if err := c.Bind(params); err != nil {
+		return c.JSON(http.StatusBadRequest, err)
+	}
+
+	if err := db.Preload("Reviews").Preload("Category").Preload("Genres").Where("judul_buku LIKE ?","%"+params.BookTitle+"%").Find(&books); err.Error !=nil {
+		return c.JSON(http.StatusOK, echo.Map{
+			"message":"book not found",
+			"status":"error",
+		})
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{
+		"status":"success",
+		"data":books,
+	})
 }
 
 func (controller BooksController) GetBook(c echo.Context) error {

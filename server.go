@@ -32,8 +32,8 @@ func main(){
 
 	db := database.GetInstance()
 	db.AutoMigrate(&bookModel.Book{})
-	db.AutoMigrate(&reviewModel.Review{})
 	db.AutoMigrate(&authModel.Auth{})
+	db.AutoMigrate(&reviewModel.Review{})
 	db.AutoMigrate(&rentModel.Rent{})
 	db.AutoMigrate(&genreModel.Genre{})
 	db.AutoMigrate(&categoryModel.Category{})

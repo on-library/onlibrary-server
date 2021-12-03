@@ -131,19 +131,36 @@ func (controller RentController) Routes() []common.Route{
 func (controller RentController) GetRents(c echo.Context) error {
 	db:= database.GetInstance()
 
+	type RentWithName struct {
+		models.Rent
+		User modelAuth.Auth		`json:"user"`
+	}
 	
 	var rents []models.Rent
-
+	var rentWithName []RentWithName
+	var user modelAuth.Auth
 
 	
 
-	d:=db.Preload("Book.Category").Preload(clause.Associations).Order("tanggal_pinjam desc").Find(&rents)
+	db.
+			Preload("Book.Category").
+			Preload(clause.Associations).
+			Order("tanggal_pinjam desc").
+			Find(&rents)
 
-	fmt.Println(d)
+	for i:=0;i<len(rents);i++{
+		
+		if err := db.Select("username").First(&user, "id = ?", rents[i].AuthID);err.Error!=nil{
+			return c.JSON(http.StatusBadRequest, echo.Map{"message":"user id not found","status":"error"})
+		}
+
+		rentWithName = append(rentWithName, RentWithName{User: user, Rent: rents[i]})
+	}
+
 
 	return c.JSON(http.StatusOK, echo.Map{
 		"message":"success",
-		"data":rents,
+		"data":rentWithName[0],
 	})
 }
 
@@ -172,6 +189,13 @@ func (controller RentController) RentBook(c echo.Context) error {
 		})
 	}
 
+	if book.Stok <= 0 {
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"message":"Stok buku habis",
+			"status":"failed",
+		})
+	}
+
 	if err:= db.First(&visitor, "id = ?", claims.ID); err.Error != nil {
 		var r = struct {
 			common.GeneralResponseJSON
@@ -185,8 +209,8 @@ func (controller RentController) RentBook(c echo.Context) error {
 	id := uuid.NewV1()
 	newRent.PinjamID = id
 	newRent.BookRentID = params.BookID
-	newRent.UserRef = claims.ID
 	newRent.TanggalPinjam = time.Now()
+	newRent.AuthID = claims.ID
 	newRent.TanggalPengembalian = time.Now().AddDate(0,0,7)
 	newRent.StatusPinjam = 0
 	newRent.IsExtendConfirm = 0

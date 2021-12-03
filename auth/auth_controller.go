@@ -42,8 +42,9 @@ type(
 
 	EditRequest struct {
 		ID			uuid.UUID		`json:"id"`
-		Nama		string			`json:"name" validate:"required"`
+		Name		string			`json:"name" validate:"required"`
 		Email		string			`json:"email" validate:"required,email"`
+		Address		string			`json:"address" validate:"required"`
 	}
 
 
@@ -76,6 +77,7 @@ func (controller AuthController) Routes() []common.Route {
 			Method: echo.POST,
 			Path: "/auth/edit",
 			Handler: controller.EditAccount,
+			Middleware: []echo.MiddlewareFunc{common.JwtMiddleware()},
 		},
 		{
 			Method: echo.GET,
@@ -176,6 +178,7 @@ func (controller AuthController) Register(c echo.Context) error {
 	newUser.ID = newID
 	newUser.Username = params.Username
 	newUser.Password = hashedPassword
+	newUser.Name = params.Name
 	newUser.Role = 1
 	newUser.Nim = params.Nim
 	newUser.Email = params.Email
@@ -184,7 +187,7 @@ func (controller AuthController) Register(c echo.Context) error {
 	newUser.VerifyCode =rand.Intn(9999)
 
 
-	var verifLink = "http://ees-tes1203.s3-website-ap-southeast-2.amazonaws.com/#/verify/" + strconv.Itoa(newUser.VerifyCode) + "?username="+user.Username
+	var verifLink = "http://ees-tes1203.s3-website-ap-southeast-2.amazonaws.com/#/verify/" + strconv.Itoa(newUser.VerifyCode) + "?username="+newUser.Username
 
 	var email = EmailInfo{
 		Body: fmt.Sprintf("Harap kunjungi link <a href='%s'>ini</a> untuk verifikasi akun anda", verifLink),
@@ -252,6 +255,8 @@ func (controller AuthController) VerifyAccount (c echo.Context) error {
 
 	user.IsVerify = 1
 
+	db.Save(&user)
+
 	return c.JSON(http.StatusOK,echo.Map{
 		"status":"success",
 		"message":"Account verified!",
@@ -280,19 +285,24 @@ func (controller AuthController) GetAuths(c echo.Context) error {
 func (controller AuthController) EditAccount (c echo.Context) error {
 	db:= database.GetInstance()
 	params := new(EditRequest)
+
+	user := c.Get("user").(*jwt.Token)
+	claims := user.Claims.(*common.JwtCustomClaims)
 	
 	if err:=c.Bind(params);err!=nil{
 		return c.JSON(http.StatusBadRequest,err)
+		
 	}
 
 	var auth models.Auth
 
-	if err := db.First(&auth, "id = ?", params.ID); err.Error !=nil {
+	if err := db.First(&auth, "id = ?", claims.ID); err.Error !=nil {
 		return c.JSON(http.StatusBadRequest, echo.Map{"message":"User not found","status":"error"})
 	}
 
-	auth.Name = params.Nama
+	auth.Name = params.Name
 	auth.Email = params.Email
+	auth.Address = params.Address
 
 	db.Save(&auth)
 
