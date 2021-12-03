@@ -187,7 +187,7 @@ func (controller AuthController) Register(c echo.Context) error {
 	newUser.VerifyCode =rand.Intn(9999)
 
 
-	var verifLink = "http://dev-onlibrary.s3-website-ap-southeast-2.amazonaws.com/#/verify/" + strconv.Itoa(newUser.VerifyCode) + "?username="+newUser.Username
+	var verifLink = "http://dev-onlibrary.s3-website-ap-southeast-2.amazonaws.com/#/auth/verify/" + strconv.Itoa(newUser.VerifyCode) + "?username="+newUser.Username
 
 	var email = EmailInfo{
 		Body: fmt.Sprintf("Harap kunjungi link <a href='%s'>ini</a> untuk verifikasi akun anda", verifLink),
