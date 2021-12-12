@@ -22,7 +22,7 @@ type Auth struct {
 	IsVerify		int						`json:"is_verify"`
 	VerifyCode		int						`json:"verify_code"`		
 	Rents			[]rentsModel.Rent		`gorm:"foreignKey:AuthID" json:"rents"`
-	Reviews			[]reviewModel.Review	`gorm:"foreignKey:AuthRefer" json:"reviews"`
+	Reviews			[]reviewModel.Review	`gorm:"foreignKey:AuthReviewRefer" json:"reviews"`
 	CreatedAt		time.Time				`json:"created_at"`
 	UpdatedAt 		time.Time				`json:"updated_at"`
 }

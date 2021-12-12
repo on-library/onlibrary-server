@@ -42,7 +42,14 @@ func (controller CategoryController) GetCategories (c echo.Context) error {
 	db := database.GetInstance()
 	var categories []models.Category
 
-	db.Preload("Books").Find(&categories)
+	// db.Preload("Books").Find(&categories)
+	if err := db.Find(&categories); err.Error!=nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"status":"error",
+			"message":"Message not found",
+		})
+	}
+
 
 	var r = struct {
 		common.GeneralResponseJSON

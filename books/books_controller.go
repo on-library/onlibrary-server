@@ -1,13 +1,17 @@
 package books
 
 import (
+	"bytes"
 	"fmt"
+	"image/jpeg"
+	"image/png"
 	"net/http"
 	"onlibrary/books/models"
 	modelCategory "onlibrary/category/models"
 	"onlibrary/common"
 	"onlibrary/database"
 	modelGenre "onlibrary/genre/models"
+	"os"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -31,6 +35,7 @@ type(
 		Stok			int			`json:"stok"`
 		CreatedAt		time.Time	`json:"created_at"`
 		UpdatedAt 		time.Time	`json:"updated_at"`
+		ImageBase		[]byte		`json:"image_base"`
 	}
 
 	FindBookRequest struct {
@@ -163,6 +168,27 @@ func (controller BooksController) AddBook(c echo.Context) error {
 
 	id := uuid.NewV1()
 
+	jpgI,err := png.Decode(bytes.NewReader(params.ImageBase))
+	if err!=nil {
+		fmt.Println("ini errorn",err)
+		return err;
+	}
+
+
+	urlSaved := "static/" + params.JudulBuku +".png"
+
+	dst, err := os.Create(urlSaved)
+	if err!=nil{
+		fmt.Println(err)
+		return err;
+	}
+
+	if err := jpeg.Encode(dst,jpgI,nil);err!=nil{
+		fmt.Println("set")
+		return err;
+	}
+	dst.Close()
+
 
 	newBook.BookId = id;
 	newBook.JudulBuku = params.JudulBuku
@@ -172,8 +198,10 @@ func (controller BooksController) AddBook(c echo.Context) error {
 	newBook.Penulis = params.Penulis
 	newBook.TahunTerbit = params.TahunTerbit
 	newBook.Stok = params.Stok
+	newBook.StokAwal = params.Stok
 	newBook.CreatedAt = time.Now()
 	newBook.UpdatedAt = time.Now()
+	newBook.ImgUrl = urlSaved
 
 
 	db := database.GetInstance()
@@ -221,8 +249,6 @@ func (controller BooksController) EditBook(c echo.Context) error {
 
 
 	db.First(&book, "book_id = ?", params.ID)
-
-	
 	
 	book.JudulBuku = params.JudulBuku
 	book.DeskripsiBuku = params.DeskripsiBuku

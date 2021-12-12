@@ -11,7 +11,7 @@ type Review struct {
 	Comment			string		`json:"comment"`
 	Rating			uint		`json:"rating"`
 	BookRefer		uuid.UUID	`gorm:"size:191" json:"book_refer"`
-	AuthRefer		uuid.UUID	`gorm:"size:191" json:"auth_refer"`
+	AuthReviewRefer		uuid.UUID	`gorm:"size:191" json:"auth_review_refer"`
 	CreatedAt		time.Time	`json:"created_at"`
 	UpdatedAt 		time.Time	`json:"updated_at"`
 }

@@ -41,6 +41,8 @@ func main(){
 	routes.DefineApiRoute(api)
 
 	server := echo.New()
+
+
 	server.Any("/*", func(c echo.Context) (err error) {
 		req:= c.Request()
 		res:= c.Response()
@@ -50,6 +52,8 @@ func main(){
 
 		return
 	})
+
+	server.Static("/static","static")
 
 	server.Logger.Fatal(server.Start(":8080"))
 

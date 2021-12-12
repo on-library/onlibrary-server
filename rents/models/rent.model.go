@@ -18,6 +18,7 @@ type Rent struct {
 	DeskripsiPeminjaman			string			`json:"deskripsi_peminjaman"`
 	IsExtendConfirm				int				`json:"is_extend_confirm"`
 	AlasanPerpanjangan			string			`json:"alasan_perpanjangan"`
+	AlasanPenolakanPepanjangan	string			`json:"alasan_penolakan_perpanjangan"`
 	AuthID						uuid.UUID		`gorm:"size:191" json:"user_id"`
 	BookRentID					uuid.UUID		`gorm:"size:191" json:"book_rent_id"`
 	Book						bookModel.Book	`gorm:"foreignKey:BookRentID" json:"book"`

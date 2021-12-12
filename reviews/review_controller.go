@@ -28,6 +28,10 @@ type(
 	DeleteReviewRequest struct {
 		ID		uuid.UUID	`json:"id"`
 	}
+
+	FindReviewRequest struct {
+		BookID	uuid.UUID	`json:"book_id"`
+	}
 )
 
 func (controller ReviewController) Routes() []common.Route {
@@ -42,6 +46,11 @@ func (controller ReviewController) Routes() []common.Route {
 			Method: echo.DELETE,
 			Path: "/review/delete",
 			Handler: controller.DeleteReview,
+		},
+		{
+			Method: echo.POST,
+			Path: "/review/findbybook",
+			Handler: controller.FindReviewByBook,
 		},
 	}
 }
@@ -62,12 +71,13 @@ func (controller ReviewController) AddReview(c echo.Context) error {
 	var book bookModel.Book
 	var userProfile authModel.Auth
 
-	if err := db.Select("username","name").First(&userProfile, "id = ?",claims.ID); err.Error != nil {
+	if err := db.Select("id,username","name").First(&userProfile, "id = ?",claims.ID); err.Error != nil {
 		return c.JSON(http.StatusBadRequest,echo.Map{
 			"message":"User nout found",
 			"status":"error",
 		})
 	}
+
 
 	newId := uuid.NewV1()
 
@@ -84,8 +94,8 @@ func (controller ReviewController) AddReview(c echo.Context) error {
 	}
 
 	
-	db.Model(&book).Association("Reviews").Append(&review)
 	db.Model(&userProfile).Association("Reviews").Append(&review)
+	db.Model(&book).Association("Reviews").Append(&review)
 
 	
 	var r = struct {
@@ -128,4 +138,45 @@ func (controller ReviewController) DeleteReview(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, r)
+}
+
+func (controller ReviewController) FindReviewByBook(c echo.Context) error {
+	db:=database.GetInstance()
+	params := new(FindReviewRequest)
+
+	type ReviewsWithUser struct {
+		reviewModel.Review
+		User authModel.Auth		`json:"user"`
+	}
+
+	if err:=c.Bind(params);err!= nil {
+		return c.JSON(http.StatusBadRequest, err)
+	}
+
+	var reviews []reviewModel.Review
+	var reviewsWithUser []ReviewsWithUser
+	var user authModel.Auth
+
+
+	if err:= db.Model(&reviews).Where("book_refer = ?",params.BookID).Order("created_at desc").Find(&reviews);err.Error !=nil{
+		return c.JSON(http.StatusOK, echo.Map{
+			"message":"",
+			"status":"error",
+		})
+	}
+
+	for i:=0; i<len(reviews);i++{
+
+		if err := db.Select("username", "name").First(&user, "id = ?", reviews[i].AuthReviewRefer);err.Error!=nil{
+			return c.JSON(http.StatusBadRequest, echo.Map{"message":"user id not found","status":"error"})
+		}
+
+		reviewsWithUser = append(reviewsWithUser, ReviewsWithUser{Review: reviews[i],User:user } )
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{
+		"message":"",
+		"status":"success",
+		"data":reviewsWithUser,
+	})
 }

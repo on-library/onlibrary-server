@@ -67,6 +67,7 @@ type(
 
 	DeclineExtendRentRequest struct {
 		RentID			string		`json:"rent_id"`
+		AlasanPenolakanPepanjangan 	string `json:"alasan_penolakan_perpanjangan"`
 	}
 
 	DeclineRentRequest struct {
@@ -160,7 +161,7 @@ func (controller RentController) GetRents(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, echo.Map{
 		"message":"success",
-		"data":rentWithName[0],
+		"data":rentWithName,
 	})
 }
 
@@ -352,6 +353,7 @@ func (controller RentController) DeclineExtendRent(c echo.Context) error {
 	if time.Now().Before(rent.TanggalPengembalian) {
 		rent.StatusPinjam = 2
 		rent.IsExtendConfirm = 0
+		rent.AlasanPenolakanPepanjangan = params.AlasanPenolakanPepanjangan
 	} 
 
 	db.Save(&rent)

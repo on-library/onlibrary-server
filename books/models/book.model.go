@@ -17,8 +17,10 @@ type Book struct {
 	Penulis			string						`json:"penulis"`
 	Penerbit		string						`json:"penerbit"`
 	Stok			int							`json:"stok"`
+	StokAwal		int							`json:"stok_awal"`
 	Photo			string						`json:"photo"`
 	DeskripsiBuku	string						`json:"deskripsi_buku"`
+	ImgUrl			string						`json:"img_url"`
 	Genres			[]genreModel.Genre			`gorm:"foreignKey:GenreBookID" json:"genres"`
 	Reviews			[]reviewModel.Review	 	`gorm:"foreignKey:BookRefer" json:"reviews"`
 	BookCategoryID	uuid.UUID					`gorm:"size:191" json:"-"`
