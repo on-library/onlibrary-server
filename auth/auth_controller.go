@@ -100,7 +100,7 @@ func (controller AuthController) Login(c echo.Context) error {
 	var r = struct {
 		common.GeneralResponseJSON
 	}{
-		GeneralResponseJSON: common.GeneralResponseJSON{Message:"Username/password tidak dikenali"},
+		GeneralResponseJSON: common.GeneralResponseJSON{Message:"Username dan/atau password tidak dikenali"},
 	}
 
 	if db.First(&user, "username = ?", params.Username);user.Username != params.Username{

@@ -43,8 +43,8 @@ type(
 	}
 
 	EditBookRequest struct {
-		ID				uuid.UUID
-		AddBookRequest
+		ID				uuid.UUID	`json:"book_id"`
+		DeskripsiBuku	string		`json:"deskripsi_buku"`
 	}
 
 	
@@ -250,12 +250,7 @@ func (controller BooksController) EditBook(c echo.Context) error {
 
 	db.First(&book, "book_id = ?", params.ID)
 	
-	book.JudulBuku = params.JudulBuku
 	book.DeskripsiBuku = params.DeskripsiBuku
-	book.Penulis = params.Penulis
-	book.BookCategoryID = params.CategoryID
-	book.DeskripsiBuku = params.DeskripsiBuku
-	book.Stok = params.Stok
 
 	db.Save(&book)
 
@@ -276,6 +271,14 @@ func (controller BooksController) DeleteBook(c echo.Context) error {
 		}
 		fmt.Println(err.Error)
 		return c.JSON(http.StatusBadRequest, r)
+	}
+
+	
+	if book.Stok <= 0 {
+		return c.JSON(http.StatusBadRequest,echo.Map{
+			"status":"error",
+			"message":"Buku tidak dapat dihapus karena sedang dipinjam/stok telah habis",
+		})
 	}
 
 	// for i :=0;i<len(book.Genres);i++{
